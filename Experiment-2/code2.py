@@ -1,81 +1,102 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
+# XOR dataset
+X = np.array([
+    [0,0],
+    [0,1],
+    [1,0],
+    [1,1]
+])
 
-# Step 1: Sigmoid function
+y = np.array([[0],[1],[1],[0]])
 
+# sigmoid function
 def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+    return 1/(1+np.exp(-x))
 
-# Derivative of sigmoid
+# derivative
 def sigmoid_derivative(x):
-    return x * (1 - x)
+    return x*(1-x)
 
+# network structure
+input_size = 2
+hidden_size = 2
+output_size = 1
 
-# Step 2: XOR input and output
+# weights initialization
+np.random.seed(42)
+W1 = np.random.randn(input_size, hidden_size)
+b1 = np.zeros((1, hidden_size))
 
-X = np.array([[0, 0],
-              [0, 1],
-              [1, 0],
-              [1, 1]])
+W2 = np.random.randn(hidden_size, output_size)
+b2 = np.zeros((1, output_size))
 
-y = np.array([[0],
-              [1],
-              [1],
-              [0]])
+lr = 0.1
+epochs = 10000
 
+losses = []
 
-# Step 3: Initialize weights
+for epoch in range(epochs):
 
-np.random.seed(1)
-
-input_layer_neurons = 2
-hidden_layer_neurons = 2
-output_layer_neurons = 1
-
-# Weights
-wh = np.random.uniform(size=(input_layer_neurons, hidden_layer_neurons))
-bh = np.random.uniform(size=(1, hidden_layer_neurons))
-
-wo = np.random.uniform(size=(hidden_layer_neurons, output_layer_neurons))
-bo = np.random.uniform(size=(1, output_layer_neurons))
-
-learning_rate = 0.1
-
-
-# Step 4: Training the MLP
-
-for epoch in range(10000):
-
-    # Forward Propagation
-    hidden_input = np.dot(X, wh) + bh
+    # forward pass
+    hidden_input = np.dot(X, W1) + b1
     hidden_output = sigmoid(hidden_input)
 
-    final_input = np.dot(hidden_output, wo) + bo
-    final_output = sigmoid(final_input)
+    final_input = np.dot(hidden_output, W2) + b2
+    y_pred = sigmoid(final_input)
 
-    # Error calculation
-    error = y - final_output
+    # loss
+    loss = np.mean((y - y_pred)**2)
+    losses.append(loss)
 
-    # Backpropagation
-    d_output = error * sigmoid_derivative(final_output)
-    error_hidden = d_output.dot(wo.T)
-    d_hidden = error_hidden * sigmoid_derivative(hidden_output)
+    # backpropagation
+    d_output = (y - y_pred) * sigmoid_derivative(y_pred)
 
-    # Update weights and biases
-    wo += hidden_output.T.dot(d_output) * learning_rate
-    bo += np.sum(d_output, axis=0, keepdims=True) * learning_rate
+    d_hidden = d_output.dot(W2.T) * sigmoid_derivative(hidden_output)
 
-    wh += X.T.dot(d_hidden) * learning_rate
-    bh += np.sum(d_hidden, axis=0, keepdims=True) * learning_rate
+    # update weights
+    W2 += hidden_output.T.dot(d_output) * lr
+    b2 += np.sum(d_output, axis=0, keepdims=True) * lr
+
+    W1 += X.T.dot(d_hidden) * lr
+    b1 += np.sum(d_hidden, axis=0, keepdims=True) * lr
 
 
-# Step 5: Testing the network
+# predictions
+print("Predictions:")
+print(y_pred)
 
-print("Input:")
-print(X)
 
-print("\nPredicted Output:")
-print(np.round(final_output))
+# LOSS GRAPH 
+plt.figure()
+plt.plot(losses)
+plt.title("Loss vs Epoch")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.show()
 
-print("\nActual Output:")
-print(y)
+
+#  DECISION BOUNDARY 
+x_min, x_max = -0.5, 1.5
+y_min, y_max = -0.5, 1.5
+
+xx, yy = np.meshgrid(
+    np.linspace(x_min, x_max, 100),
+    np.linspace(y_min, y_max, 100)
+)
+
+grid = np.c_[xx.ravel(), yy.ravel()]
+
+hidden = sigmoid(np.dot(grid, W1) + b1)
+output = sigmoid(np.dot(hidden, W2) + b2)
+
+Z = output.reshape(xx.shape)
+
+plt.figure()
+plt.contourf(xx, yy, Z, alpha=0.6)
+plt.scatter(X[:,0], X[:,1], c=y.flatten(), s=100)
+plt.title("XOR Decision Boundary")
+plt.xlabel("Input 1")
+plt.ylabel("Input 2")
+plt.show()
