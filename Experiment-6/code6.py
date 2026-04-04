@@ -3,51 +3,60 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Sample time series data
-data = np.sin(np.linspace(0, 20, 100))
+# 1. Generate Time Series Data
 
-# Prepare dataset
-seq_length = 5
-X = []
-y = []
+data = np.sin(np.linspace(0, 100, 500))  # sine wave
 
-for i in range(len(data) - seq_length):
-    X.append(data[i:i+seq_length])
-    y.append(data[i+seq_length])
 
-X = np.array(X)
-y = np.array(y)
+# 2. Create Sequences
+
+def create_sequences(data, seq_len):
+    X = []
+    y = []
+    for i in range(len(data) - seq_len):
+        X.append(data[i:i+seq_len])
+        y.append(data[i+seq_len])
+    return np.array(X), np.array(y)
+
+seq_len = 10
+X, y = create_sequences(data, seq_len)
 
 # Convert to tensors
-X = torch.FloatTensor(X)
-y = torch.FloatTensor(y)
+X = torch.tensor(X, dtype=torch.float32)
+y = torch.tensor(y, dtype=torch.float32)
 
-# RNN Model
+
+# 3. Define RNN Model
+
 class RNNModel(nn.Module):
     def __init__(self):
         super(RNNModel, self).__init__()
-        self.rnn = nn.RNN(input_size=1, hidden_size=10, batch_first=True)
-        self.fc = nn.Linear(10, 1)
+        self.rnn = nn.RNN(input_size=1, hidden_size=32, batch_first=True)
+        self.fc = nn.Linear(32, 1)
 
     def forward(self, x):
-        x = x.unsqueeze(-1)
-        out, _ = self.rnn(x)
-        out = self.fc(out[:, -1, :])
-        return out
+        x = x.unsqueeze(-1)           # (batch, seq_len, 1)
+        out, _ = self.rnn(x)          # RNN output
+        out = self.fc(out[:, -1, :])  # last time step
+        return out.squeeze()
 
 model = RNNModel()
 
-# Loss and optimizer
+
+# 4. Loss & Optimizer
+
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
-# Training
-epochs = 100
+
+# 5. Training
+
+epochs = 50
 losses = []
 
 for epoch in range(epochs):
     output = model(X)
-    loss = criterion(output.squeeze(), y)
+    loss = criterion(output, y)
 
     optimizer.zero_grad()
     loss.backward()
@@ -55,15 +64,31 @@ for epoch in range(epochs):
 
     losses.append(loss.item())
 
-print("Training Complete")
+    if epoch % 10 == 0:
+        print(f"Epoch {epoch}, Loss: {loss.item()}")
 
-# Prediction
+
+# 6. Prediction
+
 predicted = model(X).detach().numpy()
 
-# Plot graph
+# 7. Plot 1: Loss vs Epoch
+
 plt.figure()
-plt.plot(y.numpy(), label='Actual')
-plt.plot(predicted, label='Predicted')
+plt.plot(losses)
+plt.title("Loss vs Epoch")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.grid()
+plt.show()
+
+
+# 8. Plot 2: Actual vs Predicted
+
+plt.figure()
+plt.plot(y.numpy(), label="Actual")
+plt.plot(predicted, label="Predicted")
 plt.legend()
-plt.title("RNN Time Series Prediction")
+plt.title("Actual vs Predicted")
+plt.grid()
 plt.show()
